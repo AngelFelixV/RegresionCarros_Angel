@@ -9,8 +9,8 @@ import warnings
 warnings.filterwarnings('ignore')
 # %matplotlib inline
 
-df_raw = pd.read_csv('/content/car_price_prediction (1).csv', header=0)
-df_raw
+url = "https://github.com/AngelFelixV/RegresionCarros_Angel/blob/main/car_price_prediction%20(1).csv"
+df_raw = pd.read_csv(url)
 
 df_raw['Category'].value_counts()
 
