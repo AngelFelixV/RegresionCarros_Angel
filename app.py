@@ -20,7 +20,7 @@ COLOR_MAP = {
     "Gray": "#7A7A7A",
     "Blue": "#1f77b4",
     "Red": "#d62728",
-    "Dark red": "#8B0000",
+    "Carmelian red": "#8B0000",
     "Green": "#2ca02c",
     "Yellow": "#E6C200",
     "Golden": "#C9A227",
@@ -125,28 +125,33 @@ with c2:
     colors = sorted(df['Color'].unique())
     cols = st.columns(6)
 
-    selected_color = st.session_state.get("selected_color", colors[0])
+   st.markdown("### 🎨 Color")
 
-    for i, c in enumerate(colors):
-        with cols[i % 6]:
-            if st.button(" ", key=f"color_{c}"):
-                selected_color = c
-                st.session_state["selected_color"] = c
-            st.markdown(
-                f"""
-                <div style="
-                    background:{COLOR_MAP.get(c,'#999')};
-                    width:46px;
-                    height:46px;
-                    border-radius:10px;
-                    border:{'4px solid #000' if selected_color == c else '2px solid #333'};
-                    box-shadow:0 0 6px rgba(0,0,0,0.4);
-                    margin:auto;
-                "></div>
-                <p style="text-align:center;font-size:12px;color:#ccc">{c}</p>
-                """,
-                unsafe_allow_html=True
-            )
+colors = sorted(df['Color'].dropna().unique())
+cols = st.columns(6)
+
+for i, c in enumerate(colors):
+    hex_color = COLOR_MAP.get(c, "#999999")
+
+    with cols[i % 6]:
+        if st.button(" ", key=f"color_{c}"):
+            st.session_state.selected_color = c
+
+        st.markdown(
+            f"""
+            <div style="
+                background-color:{hex_color};
+                width:42px;
+                height:42px;
+                border-radius:8px;
+                border:{'3px solid black' if st.session_state.selected_color == c else '1px solid #555'};
+                margin:auto;
+            "></div>
+            <p style="text-align:center;font-size:12px">{c}</p>
+            """,
+            unsafe_allow_html=True
+        )
+
 
 # ======================
 # PREVIEW
