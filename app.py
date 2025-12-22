@@ -125,7 +125,7 @@ with c2:
     colors = sorted(df['Color'].unique())
     cols = st.columns(6)
 
-   st.markdown("### 🎨 Color")
+    st.markdown("### 🎨 Color")
 
 colors = sorted(df['Color'].dropna().unique())
 cols = st.columns(6)
@@ -151,7 +151,6 @@ for i, c in enumerate(colors):
             """,
             unsafe_allow_html=True
         )
-
 
 # ======================
 # PREVIEW
