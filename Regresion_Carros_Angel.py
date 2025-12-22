@@ -492,35 +492,3 @@ def predict_new_car_price(car_data):
     upper_bound = max(0, upper_bound)
 
     return original_price, lower_bound, upper_bound
-
-import joblib
-from pathlib import Path
-
-# ===============================
-# CREATE ARTIFACT FOLDER
-# ===============================
-Path("artifacts").mkdir(exist_ok=True)
-
-# ===============================
-# SAVE PREPROCESSING OBJECTS
-# ===============================
-joblib.dump(encoder, "artifacts/encoder.pkl")
-joblib.dump(scaler, "artifacts/scaler_X.pkl")
-joblib.dump(y_scaler, "artifacts/scaler_y.pkl")
-joblib.dump(X.columns.tolist(), "artifacts/X_columns.pkl")
-
-# ===============================
-# SAVE MODELS
-# ===============================
-joblib.dump(regresion_multi_var, "artifacts/default_model.pkl")
-
-# If you have multiple best models by segment
-joblib.dump(best_models, "artifacts/best_models.pkl")
-
-# ===============================
-# SAVE DEFAULT VALUES
-# ===============================
-joblib.dump(global_default_values, "artifacts/defaults_global.pkl")
-joblib.dump(model_specific_defaults, "artifacts/defaults_by_model.pkl")
-
-print("✅ All artifacts saved in /artifacts")
