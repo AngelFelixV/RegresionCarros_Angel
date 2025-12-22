@@ -10,6 +10,26 @@ warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="Car Price Predictor", layout="wide")
 
+COLOR_MAP = {
+    "Black": "#000000",
+    "White": "#FFFFFF",
+    "Silver": "#C0C0C0",
+    "Grey": "#808080",
+    "Gray": "#808080",
+    "Blue": "#1f77b4",
+    "Red": "#d62728",
+    "Carmelian red": "#960018",   # ✅ FIXED
+    "Green": "#2ca02c",
+    "Yellow": "#FFD700",
+    "Gold": "#FFD700",            # ✅ FIXED
+    "Orange": "#FFA500",
+    "Brown": "#8B4513",
+    "Beige": "#F5F5DC",           # ✅ FIXED
+    "Pink": "#FFC0CB",
+    "Purple": "#800080",
+}
+
+
 # ======================
 # LOAD & PREPROCESS DATA
 # ======================
