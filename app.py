@@ -7,7 +7,7 @@ import joblib
 # ======================
 # Cargar objetos
 # ======================
-modelo = joblib.load("modelos_autos.pkl")
+modelo = joblib.load("modelos_auto.pkl")
 scaler_X = joblib.load("scaler_X.pkl")
 scaler_y = joblib.load("y_scaler.pkl")
 encoder = joblib.load("encoder.pkl")
