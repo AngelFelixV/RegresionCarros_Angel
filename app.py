@@ -1,92 +1,192 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import warnings
+warnings.filterwarnings("ignore")
 
-
-# ======================
-# Cargar objetos
-# ======================
-modelo = joblib.load("modelos_auto.pkl")
-scaler_X = joblib.load("scaler_X.pkl")
-scaler_y = joblib.load("y_scaler.pkl")
-encoder = joblib.load("encoder.pkl")
-columnas_modelo = joblib.load("columnas_modelo.pkl")
+st.set_page_config(page_title="Car Price Predictor", layout="wide")
 
 # ======================
-# Interfaz
+# LOAD & PREPROCESS DATA
 # ======================
-st.title("🚗 Predicción de Precio de Autos")
+@st.cache_data
+def load_and_train():
+    url = "https://raw.githubusercontent.com/AngelFelixV/RegresionCarros_Angel/main/car_price_prediction%20(1).csv"
+    df = pd.read_csv(url)
 
-st.write("Introduce las características del auto:")
+    df.drop(columns=['ID'], inplace=True)
+    df['Levy'] = df['Levy'].astype(str).str.replace('-', '0').astype(float)
+    df['Mileage'] = df['Mileage'].astype(str).str.replace(' km', '').astype(float)
+    df['Doors'] = df['Doors'].astype(str).str.extract(r'(\d+)').astype(int)
 
-# ----------------------
-# Variables numéricas
-# ----------------------
-levy = st.number_input("Levy", min_value=0.0, value=500.0)
-mileage = st.number_input("Kilometraje", min_value=0.0, value=50000.0)
-engine_volume = st.number_input("Volumen del motor (L)", min_value=0.5, max_value=8.0, value=2.0)
-doors = st.selectbox("Número de puertas", [2, 3, 4, 5])
-cylinders = st.number_input("Cilindros", min_value=2, max_value=16, value=4)
-airbags = st.number_input("Número de airbags", min_value=0, max_value=20, value=6)
+    df['Turbo_status'] = np.where(
+        df['Engine volume'].astype(str).str.contains('Turbo', case=False, na=False),
+        'Turbo', 'No turbo'
+    )
+    df['Engine volume'] = df['Engine volume'].astype(str).str.extract(r'(\d+\.?\d*)')[0].astype(float)
 
-# ----------------------
-# Variables categóricas
-# ----------------------
-manufacturer = st.selectbox("Marca", encoder.categories_[0])
-model = st.selectbox("Modelo", encoder.categories_[1])
-prod_year = st.selectbox("Año de producción", encoder.categories_[2])
-category = st.selectbox("Categoría", encoder.categories_[3])
-leather = st.selectbox("Interior de cuero", encoder.categories_[4])
-fuel = st.selectbox("Tipo de combustible", encoder.categories_[5])
-gear = st.selectbox("Tipo de transmisión", encoder.categories_[6])
-drive = st.selectbox("Tracción", encoder.categories_[7])
-wheel = st.selectbox("Volante", encoder.categories_[8])
-color = st.selectbox("Color", encoder.categories_[9])
-turbo = st.selectbox("Turbo", encoder.categories_[10])
+    for col in ['Price', 'Levy', 'Mileage']:
+        m, s = df[col].mean(), df[col].std()
+        df = df[(df[col] >= m - 3*s) & (df[col] <= m + 3*s)]
 
+    categorical_cols = [
+        'Manufacturer','Model','Prod. year','Category',
+        'Leather interior','Fuel type','Gear box type',
+        'Drive wheels','Wheel','Color','Turbo_status'
+    ]
+
+    numerical_cols = ['Levy','Engine volume','Mileage','Cylinders','Doors','Airbags']
+    df['Prod. year'] = df['Prod. year'].astype(str)
+
+    encoder = OneHotEncoder(
+        drop='first',
+        sparse_output=False,
+        handle_unknown='ignore'
+    )
+
+    X_cat = encoder.fit_transform(df[categorical_cols])
+    X_cat = pd.DataFrame(
+        X_cat,
+        columns=encoder.get_feature_names_out(categorical_cols),
+        index=df.index
+    )
+
+    X = pd.concat([df[numerical_cols], X_cat], axis=1)
+    y = df['Price']
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    y_scaler = StandardScaler()
+    y_scaled = y_scaler.fit_transform(y.values.reshape(-1,1))
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y_scaled, test_size=0.2, random_state=42
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Defaults
+    global_defaults = {}
+    for col in numerical_cols:
+        global_defaults[col] = df[col].mean()
+    for col in categorical_cols:
+        global_defaults[col] = df[col].mode()[0]
+
+    model_defaults = {}
+    for m in df['Model'].unique():
+        d = df[df['Model'] == m]
+        defaults = {}
+        for col in numerical_cols:
+            defaults[col] = d[col].mean()
+        for col in categorical_cols:
+            defaults[col] = d[col].mode()[0]
+        model_defaults[m] = defaults
+
+    return df, model, encoder, scaler, y_scaler, X.columns, categorical_cols, numerical_cols, model_defaults, global_defaults
+
+df, model, encoder, scaler, y_scaler, X_cols, cat_cols, num_cols, model_defaults, global_defaults = load_and_train()
 
 # ======================
-# Predicción
+# UI
 # ======================
-if st.button("Predecir precio"):
-    
-    # ----------------------
-    # Parte numérica
-    # ----------------------
-    X_base = pd.DataFrame(
-    np.zeros((1, len(columnas_modelo))),
-    columns=columnas_modelo
-)
+st.title("🚗 Car Price Prediction App")
 
-# Numéricas
-X_base.loc[0, 'Levy'] = levy
-X_base.loc[0, 'Mileage'] = mileage
-X_base.loc[0, 'Engine volume'] = engine_volume
-X_base.loc[0, 'Doors'] = doors
-X_base.loc[0, 'Cylinders'] = cylinders
-X_base.loc[0, 'Airbags'] = airbags
+col1, col2 = st.columns(2)
 
-# Categóricas
-X_cat = pd.DataFrame([[
-    manufacturer, model, prod_year, category,
-    leather, fuel, gear, drive, wheel, color, turbo
-]], columns=encoder.feature_names_in_)
+with col1:
+    manufacturer = st.selectbox(
+        "Manufacturer",
+        sorted(df['Manufacturer'].unique())
+    )
 
-X_cat_encoded = encoder.transform(X_cat)
-X_cat_encoded = pd.DataFrame(
-    X_cat_encoded,
-    columns=encoder.get_feature_names_out(),
-    index=X_base.index
-)
+    models = sorted(df[df['Manufacturer'] == manufacturer]['Model'].unique())
+    model_sel = st.selectbox("Model", models)
 
-X_base[X_cat_encoded.columns] = X_cat_encoded
+    fuel = st.selectbox("Fuel Type", sorted(df['Fuel type'].unique()))
+    gear = st.selectbox("Gear Box Type", sorted(df['Gear box type'].unique()))
 
-# Escalado
-X_scaled = scaler_X.transform(X_base)
+with col2:
+    st.markdown("### 🚙 Category")
+    categories = sorted(df['Category'].unique())
+    selected_category = st.radio("", categories)
 
-# Predicción
-y_pred_scaled = modelo.predict(X_scaled)
-y_pred = scaler_y.inverse_transform(y_pred_scaled)
+    st.markdown("### 🎨 Color")
+    colors = sorted(df['Color'].unique())
 
-st.success(f"💰 Precio estimado: ${y_pred[0][0]:,.2f}")
+    cols = st.columns(6)
+    selected_color = colors[0]
+    for i, c in enumerate(colors):
+        with cols[i % 6]:
+            if st.button(c):
+                selected_color = c
+            st.markdown(
+                f"""
+                <div style="
+                    background-color:{c.lower().replace(' ','')};
+                    width:40px;
+                    height:40px;
+                    border-radius:6px;
+                    border:2px solid #555;
+                    margin:auto;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+# ======================
+# PREDICTION
+# ======================
+def predict_price(user_input):
+    base = model_defaults.get(user_input['Model'], global_defaults).copy()
+    base.update(user_input)
+
+    base['Mileage'] = f"{int(base['Mileage'])} km"
+    base['Engine volume'] = str(base['Engine volume'])
+    base['Doors'] = str(int(base['Doors']))
+
+    df_in = pd.DataFrame([base])
+    df_in['Levy'] = df_in['Levy'].astype(float)
+    df_in['Mileage'] = df_in['Mileage'].str.replace(' km','').astype(float)
+    df_in['Doors'] = df_in['Doors'].str.extract(r'(\d+)').astype(int)
+
+    df_in['Turbo_status'] = np.where(
+        df_in['Engine volume'].str.contains('Turbo', case=False, na=False),
+        'Turbo','No turbo'
+    )
+    df_in['Engine volume'] = df_in['Engine volume'].str.extract(r'(\d+\.?\d*)').astype(float)
+    df_in['Prod. year'] = df_in['Prod. year'].astype(str)
+
+    X_cat = encoder.transform(df_in[cat_cols])
+    X_cat = pd.DataFrame(X_cat, columns=encoder.get_feature_names_out(cat_cols))
+    X_num = df_in[num_cols]
+
+    X_final = pd.concat([X_num, X_cat], axis=1)
+    X_final = X_final.reindex(columns=X_cols, fill_value=0)
+
+    X_scaled = scaler.transform(X_final)
+    y_scaled = model.predict(X_scaled)
+
+    return max(0, y_scaler.inverse_transform(y_scaled.reshape(-1,1))[0][0])
+
+# ======================
+# BUTTON
+# ======================
+if st.button("💰 Predict Price"):
+    user_input = {
+        'Manufacturer': manufacturer,
+        'Model': model_sel,
+        'Category': selected_category,
+        'Fuel type': fuel,
+        'Gear box type': gear,
+        'Color': selected_color
+    }
+
+    price = predict_price(user_input)
+
+    st.success(f"Estimated Price: ${price:,.0f}")
