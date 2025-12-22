@@ -152,7 +152,10 @@ with c2:
 # PREVIEW
 # ======================
 st.markdown("### 🚘 Your Selected Car")
-st.markdown(car_icon(COLOR_MAP[selected_color], selected_category), unsafe_allow_html=True)
+st.markdown(
+    car_icon(COLOR_MAP.get(selected_color, "#999999"), selected_category),
+    unsafe_allow_html=True
+)
 
 # ======================
 # PREDICT
