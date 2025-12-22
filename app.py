@@ -45,69 +45,6 @@ wheel = st.selectbox("Volante", encoder.categories_[8])
 color = st.selectbox("Color", encoder.categories_[9])
 turbo = st.selectbox("Turbo", encoder.categories_[10])
 
-def plot_colors_grid(colors, title="Available Car Colors", ncols=5, figsize=(10, 6)):
-    """
-    Plots a grid of color swatches with their names.
-
-    Args:
-        colors (list): A list of color names (strings).
-        title (str): Title of the plot.
-        ncols (int): Number of columns in the grid.
-        figsize (tuple): Figure size.
-    """
-    nrows = int(np.ceil(len(colors) / ncols))
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-    axes = axes.flatten()
-
-    for i, color_name in enumerate(colors):
-        if i >= len(axes): # Prevent index out of bounds for axes
-            break
-
-        ax = axes[i]
-        try:
-            # Try to use the color name directly if matplotlib recognizes it
-            color_val = color_name.lower().replace(' ', '')
-            if color_val == 'gray': # Gray is 'grey' in some contexts, ensure consistency
-                color_val = 'grey'
-            if color_val == 'darkblue': # common variation
-                color_val = 'midnightblue'
-            if color_val == 'silver':
-                color_val = '#C0C0C0' # Hex code for silver
-            if color_val == 'golden':
-                color_val = '#FFD700' # Hex code for golden
-            if color_val == 'beig':
-                color_val = '#F5F5DC' # Hex code for beige
-            if color_val == 'orange':
-                color_val = '#FFA500'
-
-            # Create a Rectangle patch to give it a defined shape
-            patch = mpatches.Rectangle((0, 0), 1, 1, facecolor=color_val, edgecolor='black', linewidth=1)
-        except ValueError:
-            # If not a recognized color name, use a default (e.g., grey) and print a warning
-            print(f"Warning: '{color_name}' not a standard matplotlib color. Using grey.")
-            patch = mpatches.Rectangle((0, 0), 1, 1, facecolor='grey', edgecolor='black', linewidth=1)
-
-        ax.add_patch(patch)
-        ax.set_title(color_name)
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.axis('off') # Hide axes ticks and labels
-
-    # Hide any unused subplots
-    for j in range(i + 1, len(axes)):
-        axes[j].axis('off')
-
-    fig.suptitle(title, fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.show()
-
-# Get unique colors from the DataFrame
-# Ensure df_raw is loaded. If not, the previous %run Regresion_Carros_Angel.py should have loaded it.
-if 'df_raw' in locals():
-    unique_colors = df_raw['Color'].unique().tolist()
-    plot_colors_grid(unique_colors)
-else:
-    print("df_raw DataFrame not found. Please ensure the data loading script has run.")
 
 # ======================
 # Predicción
