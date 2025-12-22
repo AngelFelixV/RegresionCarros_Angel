@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 st.set_page_config(page_title="Car Price Predictor", layout="wide")
 
 # ======================
-# COLOR MAP (FIXED)
+# COLOR MAP
 # ======================
 COLOR_MAP = {
     "Black": "#000000",
@@ -32,15 +32,15 @@ COLOR_MAP = {
 }
 
 # ======================
-# CAR ICON (HTML)
+# CAR ICON
 # ======================
 def car_icon(color_hex, category):
     shape = {
-        "Sedan": "border-radius: 20px 20px 10px 10px;",
-        "Jeep": "border-radius: 8px;",
-        "Hatchback": "border-radius: 16px;",
-        "Coupe": "border-radius: 25px;",
-        "Universal": "border-radius: 10px;",
+        "Sedan": "border-radius:20px 20px 10px 10px;",
+        "Jeep": "border-radius:8px;",
+        "Hatchback": "border-radius:16px;",
+        "Coupe": "border-radius:25px;",
+        "Universal": "border-radius:10px;",
     }.get(category, "border-radius:12px;")
 
     return f"""
@@ -52,7 +52,7 @@ def car_icon(color_hex, category):
         box-shadow:0 4px 10px rgba(0,0,0,0.6);
         margin:auto;
     "></div>
-    <p style="text-align:center;font-size:14px;color:#ccc">{category}</p>
+    <p style="text-align:center;color:#ccc">{category}</p>
     """
 
 # ======================
@@ -75,18 +75,18 @@ def load_and_train():
     df['Engine volume'] = df['Engine volume'].astype(str).str.extract(r'(\d+\.?\d*)')[0].astype(float)
     df['Prod. year'] = df['Prod. year'].astype(str)
 
-    categorical = [
+    cat_cols = [
         'Manufacturer','Model','Prod. year','Category',
         'Leather interior','Fuel type','Gear box type',
         'Drive wheels','Wheel','Color','Turbo_status'
     ]
-    numerical = ['Levy','Engine volume','Mileage','Cylinders','Doors','Airbags']
+    num_cols = ['Levy','Engine volume','Mileage','Cylinders','Doors','Airbags']
 
     encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
-    X_cat = encoder.fit_transform(df[categorical])
+    X_cat = encoder.fit_transform(df[cat_cols])
     X = pd.concat(
-        [df[numerical].reset_index(drop=True),
-         pd.DataFrame(X_cat, columns=encoder.get_feature_names_out(categorical))],
+        [df[num_cols].reset_index(drop=True),
+         pd.DataFrame(X_cat, columns=encoder.get_feature_names_out(cat_cols))],
         axis=1
     )
 
@@ -100,9 +100,12 @@ def load_and_train():
     model = LinearRegression()
     model.fit(X_train, y_train)
 
-    return df, model, encoder, scaler, y_scaler, X.columns, categorical, numerical
+    defaults = df[num_cols].mean().to_dict()
+    defaults.update(df[cat_cols].mode().iloc[0].to_dict())
 
-df, model, encoder, scaler, y_scaler, X_cols, cat_cols, num_cols = load_and_train()
+    return df, model, encoder, scaler, y_scaler, X.columns, cat_cols, num_cols, defaults
+
+df, model, encoder, scaler, y_scaler, X_cols, cat_cols, num_cols, defaults = load_and_train()
 
 # ======================
 # UI
@@ -113,34 +116,26 @@ c1, c2 = st.columns(2)
 
 with c1:
     manufacturer = st.selectbox("Manufacturer", sorted(df['Manufacturer'].unique()))
-    model_sel = st.selectbox(
-        "Model",
-        sorted(df[df['Manufacturer'] == manufacturer]['Model'].unique())
-    )
+    model_sel = st.selectbox("Model", sorted(df[df['Manufacturer'] == manufacturer]['Model'].unique()))
     fuel = st.selectbox("Fuel Type", sorted(df['Fuel type'].unique()))
     gear = st.selectbox("Gear Box Type", sorted(df['Gear box type'].unique()))
 
 with c2:
-    st.markdown("### 🚙 Category")
-    selected_category = st.radio("", sorted(df['Category'].unique()))
-
-    st.markdown("### 🎨 Color")
+    selected_category = st.radio("Category", sorted(df['Category'].unique()))
     colors = sorted(df['Color'].unique())
     cols = st.columns(6)
 
     selected_color = st.session_state.get("selected_color", colors[0])
 
     for i, c in enumerate(colors):
-        hex_color = COLOR_MAP.get(c, "#999999")
         with cols[i % 6]:
             if st.button(" ", key=f"color_{c}"):
                 selected_color = c
                 st.session_state["selected_color"] = c
-
             st.markdown(
                 f"""
                 <div style="
-                    background-color:{hex_color};
+                    background:{COLOR_MAP.get(c,'#999')};
                     width:46px;
                     height:46px;
                     border-radius:10px;
@@ -157,13 +152,10 @@ with c2:
 # PREVIEW
 # ======================
 st.markdown("### 🚘 Your Selected Car")
-st.markdown(
-    car_icon(COLOR_MAP.get(selected_color, "#999999"), selected_category),
-    unsafe_allow_html=True
-)
+st.markdown(car_icon(COLOR_MAP[selected_color], selected_category), unsafe_allow_html=True)
 
 # ======================
-# PREDICTION
+# PREDICT
 # ======================
 def predict_price(user_input):
     df_in = pd.DataFrame([user_input])
@@ -175,25 +167,16 @@ def predict_price(user_input):
     return max(0, y_scaler.inverse_transform(y_scaled.reshape(-1,1))[0][0])
 
 if st.button("💰 Predict Price"):
-    user_input = {
+    user_input = defaults.copy()
+    user_input.update({
         'Manufacturer': manufacturer,
         'Model': model_sel,
         'Category': selected_category,
         'Fuel type': fuel,
         'Gear box type': gear,
-        'Color': selected_color,
-        'Levy': df['Levy'].mean(),
-        'Engine volume': df['Engine volume'].mean(),
-        'Mileage': df['Mileage'].mean(),
-        'Cylinders': df['Cylinders'].mean(),
-        'Doors': df['Doors'].mean(),
-        'Airbags': df['Airbags'].mean(),
-        'Prod. year': df['Prod. year'].mode()[0],
-        'Leather interior': df['Leather interior'].mode()[0],
-        'Drive wheels': df['Drive wheels'].mode()[0],
-        'Wheel': df['Wheel'].mode()[0],
-        'Turbo_status': 'No turbo'
-    }
+        'Color': selected_color
+    })
 
     price = predict_price(user_input)
     st.success(f"Estimated Price: ${price:,.0f}")
+
