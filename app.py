@@ -139,25 +139,37 @@ with col2:
     st.markdown("### 🎨 Color")
     colors = sorted(df['Color'].unique())
 
-    cols = st.columns(6)
-    selected_color = colors[0]
-    for i, c in enumerate(colors):
-        with cols[i % 6]:
-            if st.button(c):
-                selected_color = c
-            st.markdown(
-                f"""
-                <div style="
-                    background-color:{c.lower().replace(' ','')};
-                    width:40px;
-                    height:40px;
-                    border-radius:6px;
-                    border:2px solid #555;
-                    margin:auto;">
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+    st.markdown("### 🎨 Color")
+
+colors = sorted(df['Color'].unique())
+cols = st.columns(6)
+
+selected_color = st.session_state.get("selected_color", colors[0])
+
+for i, c in enumerate(colors):
+    hex_color = COLOR_MAP.get(c, "#999999")  # fallback gray
+
+    with cols[i % 6]:
+        if st.button(" ", key=f"color_{c}"):
+            selected_color = c
+            st.session_state["selected_color"] = c
+
+        st.markdown(
+            f"""
+            <div style="
+                background-color:{hex_color};
+                width:42px;
+                height:42px;
+                border-radius:8px;
+                border: {'3px solid #000' if selected_color == c else '1px solid #555'};
+                margin:auto;
+            ">
+            </div>
+            <p style="text-align:center;font-size:12px">{c}</p>
+            """,
+            unsafe_allow_html=True
+        )
+
 
 # ======================
 # PREDICTION
